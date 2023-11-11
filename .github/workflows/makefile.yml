@@ -1,50 +1,36 @@
-name: Makefile CI
+name: Build TWRP
 
 on:
   push:
-    branches: [ "11" ]
-  pull_request:
-    branches: [ "11" ]
+    branches:
+      - main
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-    - name: configure
-      run: ./configure
+    - name: Set up Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '11'
 
     - name: Install dependencies
-      run: make
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bison build-essential ccache cmake flex g++-multilib git-lfs lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
 
-    - name: Run check
-      run: make check
+    - name: Initialize TWRP environment
+      run: |
+        git clone https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-11.0 .repo/local_manifests
+        repo sync
 
-    - name: Run distcheck
-      run: make distcheck
-
-
-
-
-- name: Setup .NET Core SDK
-  uses: actions/setup-dotnet@v3.2.0
-  with:
-    # Optional SDK version(s) to use. If not provided, will install global.json version when available. Examples: 2.2.104, 3.1, 3.1.x, 3.x, 6.0.2xx
-    dotnet-version: # optional
-    # Optional quality of the build. The possible values are: daily, signed, validated, preview, ga.
-    dotnet-quality: # optional
-    # Optional global.json location, if your global.json isn't located in the root of the repo.
-    global-json-file: # optional
-    # Optional package source for which to set up authentication. Will consult any existing NuGet.config in the root of the repo and provide a temporary NuGet.config using the NUGET_AUTH_TOKEN environment variable as a ClearTextPassword
-    source-url: # optional
-    # Optional OWNER for using packages from GitHub Package Registry organizations/users other than the current repository's owner. Only used if a GPR URL is also provided in source-url
-    owner: # optional
-    # Optional NuGet.config location, if your NuGet.config isn't located in the root of the repo.
-    config-file: # optional
-    # Optional input to enable caching of the NuGet global-packages folder
-    cache: # optional
-    # Used to specify the path to a dependency file: packages.lock.json. Supports wildcards or a list of file names for caching multiple dependencies.
-    cache-dependency-path: # optional
+    - name: Build TWRP
+      run: |
+        . build/envsetup.sh
+        lunch omni_lancelot-eng
+        mka recoveryimage
